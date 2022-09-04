@@ -261,6 +261,8 @@ for epoch in range(opt.n_epochs):
         
         loss = d_loss + g_loss
         train_loss += loss.item()*imgs.size(0)
+        
+    train_loss = train_loss/len(dataloader)
     print('Start save model !')
     torch.save(generator.state_dict(), SAVE_MODEL_G_PATH)
     torch.save(discriminator.state_dict(), SAVE_MODEL_D_PATH)
