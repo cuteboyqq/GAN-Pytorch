@@ -17,15 +17,16 @@ import torch
 os.makedirs("images", exist_ok=True)
 
 parser = argparse.ArgumentParser()
+parser.add_argument('-imgdir','--img-dir',help='train image dir',default=r"C:\factory_data\2022-08-26\f_384_2min\crops_ori")
 parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
 parser.add_argument("--batch_size", type=int, default=64, help="size of the batches")
 parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
 parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
-parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
-parser.add_argument("--img_size", type=int, default=32, help="size of each image dimension")
-parser.add_argument("--channels", type=int, default=1, help="number of image channels")
+parser.add_argument("--latent_dim", type=int, default=400, help="dimensionality of the latent space")
+parser.add_argument("--img_size", type=int, default=128, help="size of each image dimension")
+parser.add_argument("--channels", type=int, default=3, help="number of image channels")
 parser.add_argument("--sample_interval", type=int, default=400, help="interval between image sampling")
 opt = parser.parse_args()
 print(opt)
@@ -116,20 +117,42 @@ generator.apply(weights_init_normal)
 discriminator.apply(weights_init_normal)
 
 # Configure data loader
-os.makedirs("../../data/mnist", exist_ok=True)
-dataloader = torch.utils.data.DataLoader(
-    datasets.MNIST(
-        "../../data/mnist",
-        train=True,
-        download=True,
-        transform=transforms.Compose(
-            [transforms.Resize(opt.img_size), transforms.ToTensor(), transforms.Normalize([0.5], [0.5])]
-        ),
-    ),
-    batch_size=opt.batch_size,
-    shuffle=True,
-)
 
+import torchvision
+def load_data(args):
+    size = (args.img_size,args.img_size)
+    img_data = torchvision.datasets.ImageFolder(args.img_dir,
+                                                transform=transforms.Compose([
+                                                transforms.Resize(size),
+                                                #transforms.RandomHorizontalFlip(),
+                                                #transforms.Scale(64),
+                                                transforms.CenterCrop(size),                                                 
+                                                transforms.ToTensor(),
+                                                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)) #GANomaly parameter
+                                                ])
+                                                )
+    data_loader = torch.utils.data.DataLoader(img_data, batch_size=args.batch_size,shuffle=True,drop_last=True)
+    print('data_loader length : {}'.format(len(data_loader)))
+    return data_loader
+
+mnist = False
+custom_data = True
+if mnist:
+    os.makedirs("../../data/mnist", exist_ok=True)
+    dataloader = torch.utils.data.DataLoader(
+        datasets.MNIST(
+            "../../data/mnist",
+            train=True,
+            download=True,
+            transform=transforms.Compose(
+                [transforms.Resize(opt.img_size), transforms.ToTensor(), transforms.Normalize([0.5], [0.5])]
+            ),
+        ),
+        batch_size=opt.batch_size,
+        shuffle=True,
+    )
+elif custom_data:
+    dataloader = load_data(opt)
 # Optimizers
 optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
 optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
@@ -139,8 +162,14 @@ Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 # ----------
 #  Training
 # ----------
+SAVE_MODEL_G_DIR = "./runs/train/"
+if not os.path.exists(SAVE_MODEL_G_DIR): os.makedirs(SAVE_MODEL_G_DIR)
 
+SAVE_MODEL_G_PATH = os.path.join(SAVE_MODEL_G_DIR,"g_net.pt")
+SAVE_MODEL_D_PATH = os.path.join(SAVE_MODEL_G_DIR,"d_net.pt")
+_lowest_loss = 10000
 for epoch in range(opt.n_epochs):
+    train_loss = 0
     for i, (imgs, _) in enumerate(dataloader):
 
         # Adversarial ground truths
@@ -190,3 +219,15 @@ for epoch in range(opt.n_epochs):
         batches_done = epoch * len(dataloader) + i
         if batches_done % opt.sample_interval == 0:
             save_image(gen_imgs.data[:25], "images/%d.png" % batches_done, nrow=5, normalize=True)
+        loss = d_loss + g_loss
+        train_loss += loss.item()*imgs.size(0)
+    train_loss = train_loss/len(dataloader)
+    print('Epoch: {} \tTraining Loss: {:.6f}'.format(epoch, train_loss))
+    print('_lowest_loss = {}'.format(_lowest_loss))
+    if train_loss < _lowest_loss:
+        _lowest_loss = train_loss
+        
+    print('Start save model !')
+    torch.save(generator.state_dict(), SAVE_MODEL_G_PATH)
+    torch.save(discriminator.state_dict(), SAVE_MODEL_D_PATH)
+    print('save model weights complete with loss : %.3f' %(train_loss))
