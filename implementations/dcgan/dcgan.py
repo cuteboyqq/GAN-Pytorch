@@ -18,16 +18,19 @@ os.makedirs("images", exist_ok=True)
 
 
 parser = argparse.ArgumentParser()
+parser.add_argument('-test','--test',type=bool,help='do test',default=False)
+parser.add_argument('-train','--train',type=bool,help='do train',default=True)
 #parser.add_argument('-loadweight','--load-weight',help='load weight or not',default="True")
 parser.add_argument('-imgdir','--img-dir',help='train image dir',default=r"/home/ali/YOLOV5/runs/detect/f_384_2min/crops_ori")
 parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
-parser.add_argument("--batch_size", type=int, default=64, help="size of the batches")
+parser.add_argument("--batch_size", type=int, default=16, help="size of the batches")
+parser.add_argument("--test_batch_size", type=int, default=1, help="size of the batches")
 parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
 parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
 parser.add_argument("--latent_dim", type=int, default=400, help="dimensionality of the latent space")
-parser.add_argument("--img_size", type=int, default=128, help="size of each image dimension")
+parser.add_argument("--img_size", type=int, default=192, help="size of each image dimension")
 parser.add_argument("--channels", type=int, default=3, help="number of image channels")
 parser.add_argument("--sample_interval", type=int, default=200, help="interval between image sampling")
 parser.add_argument("--sample_interval_2", type=int, default=10, help="interval between image sampling")
@@ -116,7 +119,7 @@ if cuda:
     discriminator.cuda()
     adversarial_loss.cuda()
     
-TRAIN=True
+TRAIN=opt.train
 if TRAIN:
     # Initialize weights
     generator.apply(weights_init_normal)
@@ -141,6 +144,23 @@ def load_data(args):
     print('data_loader length : {}'.format(len(data_loader)))
     return data_loader
 
+def load_data_test(args):
+    size = (args.img_size,args.img_size)
+    img_data = torchvision.datasets.ImageFolder(args.img_dir,
+                                                transform=transforms.Compose([
+                                                transforms.Resize(size),
+                                                #transforms.RandomHorizontalFlip(),
+                                                #transforms.Scale(64),
+                                                transforms.CenterCrop(size),                                                 
+                                                transforms.ToTensor(),
+                                                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)) #GANomaly parameter
+                                                ])
+                                                )
+    data_loader = torch.utils.data.DataLoader(img_data, batch_size=args.test_batch_size,shuffle=False,drop_last=True)
+    print('data_loader length : {}'.format(len(data_loader)))
+    return data_loader
+
+
 mnist = False
 custom_data = True
 if mnist:
@@ -159,6 +179,7 @@ if mnist:
     )
 elif custom_data:
     dataloader = load_data(opt)
+    dataloader_test = load_data_test(opt)
 # Optimizers
 optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
 optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
@@ -233,7 +254,7 @@ if TRAIN:
     
             batches_done = epoch * len(dataloader) + i
             if batches_done % opt.sample_interval == 0:
-                save_image(gen_imgs.data[:25], "images/%d.png" % batches_done, nrow=5, normalize=True)
+                save_image(gen_imgs.data[:16], "images/%d.png" % batches_done, nrow=4, normalize=True)
            
             loss = d_loss + g_loss
             train_loss += loss.item()*imgs.size(0)
@@ -251,7 +272,7 @@ if TRAIN:
         print('save model weights complete with loss : %.3f' %(train_loss))
         
 '''generate model unable to generate best image'''
-TEST=False
+TEST=opt.test
 if TEST:
     os.makedirs("images_2",exist_ok=True)
     SAVE_MODEL_G_DIR = "./runs/train/"
@@ -266,7 +287,7 @@ if TEST:
     for epoch in range(opt.n_epochs):
         train_loss = 0
         with torch.no_grad():
-            for i, (imgs, _) in enumerate(dataloader):
+            for i, (imgs, _) in enumerate(dataloader_test):
                 
                 # Adversarial ground truths
                 valid = Variable(Tensor(imgs.shape[0], 1).fill_(1.0), requires_grad=False)
@@ -316,5 +337,5 @@ if TEST:
                 )
                 
                 batches_done = epoch * len(dataloader) + i
-                if batches_done % opt.sample_interval_2 == 0:
-                    save_image(gen_imgs.data[:25], "images_2/%d.png" % batches_done, nrow=5, normalize=True)
+                #if batches_done % opt.sample_interval_2 == 0:
+                save_image(gen_imgs.data[:1], "images_2/%d.png" % batches_done, nrow=1, normalize=True)
