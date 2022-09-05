@@ -20,7 +20,7 @@ os.makedirs("images", exist_ok=True)
 parser = argparse.ArgumentParser()
 parser.add_argument('-test','--test',type=bool,help='do test',default=False)
 parser.add_argument('-train','--train',type=bool,help='do train',default=True)
-#parser.add_argument('-loadweight','--load-weight',help='load weight or not',default="True")
+parser.add_argument('-loadweight','--load-weight',type=bool,help='load weight or not',default=False)
 parser.add_argument('-imgdir','--img-dir',help='train image dir',default=r"/home/ali/YOLOV5/runs/detect/f_384_2min/crops_ori")
 parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
 parser.add_argument("--batch_size", type=int, default=16, help="size of the batches")
@@ -198,11 +198,12 @@ if TRAIN:
     SAVE_MODEL_D_PATH = os.path.join(SAVE_MODEL_G_DIR,"d_net.pt")
     #generator.load_state_dict(torch.load(SAVE_MODEL_G_PATH))
     #discriminator.load_state_dict(torch.load(SAVE_MODEL_D_PATH))
-    if os.path.exists(SAVE_MODEL_G_PATH):
-        generator = torch.load(SAVE_MODEL_G_PATH)
-        discriminator = torch.load(SAVE_MODEL_D_PATH)
-        print('load weight G: {}'.format(SAVE_MODEL_G_PATH))
-        print('load weight D: {}'.format(SAVE_MODEL_D_PATH))
+    if opt.load_weight:
+        if os.path.exists(SAVE_MODEL_G_PATH):
+            generator = torch.load(SAVE_MODEL_G_PATH)
+            discriminator = torch.load(SAVE_MODEL_D_PATH)
+            print('load weight G: {}'.format(SAVE_MODEL_G_PATH))
+            print('load weight D: {}'.format(SAVE_MODEL_D_PATH))
     _lowest_loss = 10000
     for epoch in range(opt.n_epochs):
         train_loss = 0
@@ -254,7 +255,7 @@ if TRAIN:
     
             batches_done = epoch * len(dataloader) + i
             if batches_done % opt.sample_interval == 0:
-                save_image(gen_imgs.data[:16], "images/%d.png" % batches_done, nrow=4, normalize=True)
+                save_image(gen_imgs.data[:opt.batch_size], "images/%d.png" % batches_done, nrow=4, normalize=True)
            
             loss = d_loss + g_loss
             train_loss += loss.item()*imgs.size(0)
