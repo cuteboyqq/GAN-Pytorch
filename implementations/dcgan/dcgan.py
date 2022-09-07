@@ -18,8 +18,8 @@ os.makedirs("images", exist_ok=True)
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-test','--test',type=bool,help='do test',default=False)
-parser.add_argument('-train','--train',type=bool,help='do train',default=True)
+parser.add_argument('-test','--test',type=bool,help='do test',default=True)
+parser.add_argument('-train','--train',type=bool,help='do train',default=False)
 parser.add_argument('-loadweight','--load-weight',type=bool,help='load weight or not',default=True)
 parser.add_argument('-imgdir','--img-dir',help='train image dir',default=r"/home/ali/YOLOV5/runs/detect/f_384_2min/crops_ori")
 parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
@@ -284,27 +284,27 @@ if TEST:
     generator = torch.load(SAVE_MODEL_G_PATH)
     discriminator = torch.load(SAVE_MODEL_D_PATH)
     
-    for epoch in range(opt.n_epochs):
-        train_loss = 0
-        with torch.no_grad():
-            for i, (imgs, _) in enumerate(dataloader_test):
-                # Adversarial ground truths
-                valid = Variable(Tensor(imgs.shape[0], 1).fill_(1.0), requires_grad=False)
-                fake = Variable(Tensor(imgs.shape[0], 1).fill_(0.0), requires_grad=False)
-                # -----------------
-                #  Inference Generator
-                # -----------------
-                # Sample noise as generator input
-                z = Variable(Tensor(np.random.normal(0, 1, (imgs.shape[0], opt.latent_dim))))
-                # Generate a batch of images
-                gen_imgs = generator(z)
-                # Loss measures generator's ability to fool the discriminator
-                g_loss = adversarial_loss(discriminator(gen_imgs), valid)
-                
-                print(
-                    "[Epoch %d/%d] [Batch %d/%d] [G loss: %f]"
-                    % (epoch, opt.n_epochs, i, len(dataloader), g_loss.item())
-                )
-                batches_done = epoch * len(dataloader) + i
-                #if batches_done % opt.sample_interval_2 == 0:
-                save_image(gen_imgs.data[:1], "images_2/%d.png" % batches_done, nrow=1, normalize=True)
+    #for epoch in range(opt.n_epochs):
+    train_loss = 0
+    with torch.no_grad():
+        for i, (imgs, _) in enumerate(dataloader_test):
+            # Adversarial ground truths
+            valid = Variable(Tensor(imgs.shape[0], 1).fill_(1.0), requires_grad=False)
+            fake = Variable(Tensor(imgs.shape[0], 1).fill_(0.0), requires_grad=False)
+            # -----------------
+            #  Inference Generator
+            # -----------------
+            # Sample noise as generator input
+            z = Variable(Tensor(np.random.normal(0, 1, (imgs.shape[0], opt.latent_dim))))
+            # Generate a batch of images
+            gen_imgs = generator(z)
+            # Loss measures generator's ability to fool the discriminator
+            g_loss = adversarial_loss(discriminator(gen_imgs), valid)
+            
+            print(
+                "[Epoch %d/%d] [Batch %d/%d] [G loss: %f]"
+                % (epoch, opt.n_epochs, i, len(dataloader), g_loss.item())
+            )
+            batches_done = epoch * len(dataloader) + i
+            #if batches_done % opt.sample_interval_2 == 0:
+            save_image(gen_imgs.data[:1], "images_2/%d.png" % batches_done, nrow=1, normalize=True)
