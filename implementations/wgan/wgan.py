@@ -23,15 +23,17 @@ parser.add_argument('-train','--train',type=bool,help='do train',default=True)
 parser.add_argument('-loadweight','--load-weight',type=bool,help='load weight or not',default=False)
 parser.add_argument('-imgdir','--img-dir',help='train image dir',default=r"/home/ali/YOLOV5/runs/detect/f_384_2min/crops_ori")
 parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
-parser.add_argument("--batch_size", type=int, default=16, help="size of the batches")
+parser.add_argument("--batch_size", type=int, default=9, help="size of the batches")
+parser.add_argument("--test_batch_size", type=int, default=1, help="size of the batches")
 parser.add_argument("--lr", type=float, default=0.00005, help="learning rate")
+parser.add_argument("--wr", type=float, default=0.25, help="network width ratio")
 parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
-parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
-parser.add_argument("--img_size", type=int, default=128, help="size of each image dimension")
+parser.add_argument("--latent_dim", type=int, default=400, help="dimensionality of the latent space")
+parser.add_argument("--img_size", type=int, default=256, help="size of each image dimension")
 parser.add_argument("--channels", type=int, default=3, help="number of image channels")
 parser.add_argument("--n_critic", type=int, default=5, help="number of training steps for discriminator per iter")
 parser.add_argument("--clip_value", type=float, default=0.01, help="lower and upper clip value for disc. weights")
-parser.add_argument("--sample_interval", type=int, default=400, help="interval betwen image samples")
+parser.add_argument("--sample_interval", type=int, default=100, help="interval betwen image samples")
 opt = parser.parse_args()
 print(opt)
 
@@ -52,11 +54,11 @@ class Generator(nn.Module):
             return layers
 
         self.model = nn.Sequential(
-            *block(opt.latent_dim, 128, normalize=False),
-            *block(128, 256),
-            *block(256, 512),
-            *block(512, 1024),
-            nn.Linear(1024, int(np.prod(img_shape))),
+            *block(opt.latent_dim, 64, normalize=False),#128
+            *block(64, 128), #128,256
+            *block(128, 256), #256,512
+            *block(256, 512), #512,1024
+            nn.Linear(512, int(np.prod(img_shape))), #1024
             nn.Tanh()
         )
 
@@ -71,11 +73,11 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
 
         self.model = nn.Sequential(
-            nn.Linear(int(np.prod(img_shape)), 512),
+            nn.Linear(int(np.prod(img_shape)), 256), #512
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(512, 256),
+            nn.Linear(256, 128), #512,256
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(256, 1),
+            nn.Linear(128, 1), #256
         )
 
     def forward(self, img):
@@ -111,6 +113,22 @@ def load_data(args):
     print('data_loader length : {}'.format(len(data_loader)))
     return data_loader
 
+def load_data_test(args):
+    size = (args.img_size,args.img_size)
+    img_data = torchvision.datasets.ImageFolder(args.img_dir,
+                                                transform=transforms.Compose([
+                                                transforms.Resize(size),
+                                                #transforms.RandomHorizontalFlip(),
+                                                #transforms.Scale(64),
+                                                transforms.CenterCrop(size),                                                 
+                                                transforms.ToTensor(),
+                                                #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)) #GANomaly parameter
+                                                ])
+                                                )
+    data_loader = torch.utils.data.DataLoader(img_data, batch_size=args.test_batch_size,shuffle=False,drop_last=True)
+    print('data_loader length : {}'.format(len(data_loader)))
+    return data_loader
+
 mnist = False
 custom_data = True
 if mnist:
@@ -127,6 +145,7 @@ if mnist:
     )
 elif custom_data:
     dataloader = load_data(opt)
+    dataloader_test = load_data_test(opt)
 # Optimizers
 optimizer_G = torch.optim.RMSprop(generator.parameters(), lr=opt.lr)
 optimizer_D = torch.optim.RMSprop(discriminator.parameters(), lr=opt.lr)
@@ -204,7 +223,7 @@ if TRAIN:
                 )
     
             if batches_done % opt.sample_interval == 0:
-                save_image(gen_imgs.data[:16], "images/%d.png" % batches_done, nrow=4, normalize=True)
+                save_image(gen_imgs.data[:9], "images/%d.png" % batches_done, nrow=3, normalize=True)
             batches_done += 1
             
             loss = loss_D + loss_G
@@ -213,3 +232,46 @@ if TRAIN:
         torch.save(generator, SAVE_MODEL_G_PATH)
         torch.save(discriminator, SAVE_MODEL_D_PATH)
         print('save model weights complete with loss : %.3f' %(train_loss))
+        
+        
+TEST=opt.test
+if TEST:
+    os.makedirs("images_2",exist_ok=True)
+    os.makedirs("images_abnormal",exist_ok=True)
+    os.makedirs("images_normal",exist_ok=True)
+    SAVE_MODEL_G_DIR = "./runs/train/"
+    SAVE_MODEL_G_PATH = os.path.join(SAVE_MODEL_G_DIR,"g_net.pt")
+    SAVE_MODEL_D_PATH = os.path.join(SAVE_MODEL_G_DIR,"d_net.pt")
+    #generator.load_state_dict(torch.load(SAVE_MODEL_G_PATH))
+    #discriminator.load_state_dict(torch.load(SAVE_MODEL_D_PATH))
+    
+    generator = torch.load(SAVE_MODEL_G_PATH)
+    discriminator = torch.load(SAVE_MODEL_D_PATH)
+    
+    #for epoch in range(opt.n_epochs):
+    train_loss = 0
+    with torch.no_grad():
+        for i, (imgs, _) in enumerate(dataloader_test):
+            # Adversarial ground truths
+            valid = Variable(Tensor(imgs.shape[0], 1).fill_(1.0), requires_grad=False)
+            fake = Variable(Tensor(imgs.shape[0], 1).fill_(0.0), requires_grad=False)
+            # -----------------
+            #  Inference Generator
+            # -----------------
+            # Sample noise as generator input
+            z = Variable(Tensor(np.random.normal(0, 1, (imgs.shape[0], opt.latent_dim))))
+            # Generate a batch of images
+            gen_imgs = generator(z)
+            # Loss measures generator's ability to fool the discriminator
+            #g_loss = adversarial_loss(discriminator(gen_imgs), valid)
+            fake_loss = -torch.mean(discriminator(gen_imgs))
+            print(
+                "[Batch %d/%d] [G loss: %f]"
+                % (i, len(dataloader), fake_loss.item())
+            )
+            batches_done = len(dataloader) + i
+            #if batches_done % opt.sample_interval_2 == 0:
+            if fake_loss>7.0:
+                save_image(gen_imgs.data[:1], "images_abnormal/%d.png" % batches_done, nrow=1, normalize=True)
+            else:
+                save_image(gen_imgs.data[:1], "images_normal/%d.png" % batches_done, nrow=1, normalize=True)
