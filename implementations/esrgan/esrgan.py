@@ -54,7 +54,7 @@ def get_opt():
     parser.add_argument("--sample_interval", type=int, default=100, help="interval between saving image samples")
     parser.add_argument("--checkpoint_interval", type=int, default=5000, help="batch interval between model checkpoints")
     parser.add_argument("--residual_blocks", type=int, default=23, help="number of residual blocks in the generator")
-    parser.add_argument("--warmup_batches", type=int, default=500, help="number of batches with pixel-wise loss only")
+    parser.add_argument("--warmup_batches", type=int, default=200, help="number of batches with pixel-wise loss only")
     parser.add_argument("--lambda_adv", type=float, default=5e-3, help="adversarial loss weight")
     parser.add_argument("--lambda_pixel", type=float, default=1e-2, help="pixel-wise loss weight")
     opt = parser.parse_args()
@@ -248,7 +248,7 @@ def train(data_loader,opt):
                 torch.save(discriminator.state_dict(), "saved_models/discriminator_%d.pth" %epoch)
             
             loss = loss_D + loss_G
-            train_loss += loss.item()*imgs.size(0)
+            train_loss += loss.item()
         train_loss = train_loss/len(dataloader)
         print('Epoch: {} \tTraining Loss: {:.6f}'.format(epoch, train_loss))
         print('_lowest_loss = {}'.format(_lowest_loss))
@@ -269,9 +269,6 @@ if __name__=="__main__":
 
     hr_shape = (opt.hr_height, opt.hr_width)
 
-    
-    
-    
     CelebAa= False
     custom_data = True
     
