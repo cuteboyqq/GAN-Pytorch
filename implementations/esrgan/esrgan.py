@@ -221,7 +221,8 @@ def train(data_loader,opt):
             # --------------
     
             print(
-                "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f, content: %f, adv: %f, pixel: %f]"
+                #"[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f, content: %f, adv: %f, pixel: %f]"
+                "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f, adv: %f, pixel: %f]"
                 % (
                     epoch,
                     opt.n_epochs,
@@ -229,7 +230,7 @@ def train(data_loader,opt):
                     len(dataloader),
                     loss_D.item(),
                     loss_G.item(),
-                    loss_content.item(),
+                    #loss_content.item(),
                     loss_GAN.item(),
                     loss_pixel.item(),
                 )
