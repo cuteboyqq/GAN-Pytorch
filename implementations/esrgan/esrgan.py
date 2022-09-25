@@ -187,13 +187,13 @@ def train(data_loader,opt):
             loss_GAN = criterion_GAN(pred_fake - pred_real.mean(0, keepdim=True), valid)
     
             # Content loss
-            gen_features = feature_extractor(gen_hr)
-            real_features = feature_extractor(imgs_hr).detach()
-            loss_content = criterion_content(gen_features, real_features)
+            #gen_features = feature_extractor(gen_hr)
+            #real_features = feature_extractor(imgs_hr).detach()
+            #loss_content = criterion_content(gen_features, real_features)
     
             # Total generator loss
-            loss_G = loss_content + opt.lambda_adv * loss_GAN + opt.lambda_pixel * loss_pixel
-    
+            #loss_G = loss_content + opt.lambda_adv * loss_GAN + opt.lambda_pixel * loss_pixel
+            loss_G = opt.lambda_adv * loss_GAN + opt.lambda_pixel * loss_pixel
             loss_G.backward()
             optimizer_G.step()
     
