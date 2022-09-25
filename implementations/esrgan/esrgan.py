@@ -261,7 +261,45 @@ def train(data_loader,opt):
         torch.save(generator, SAVE_MODEL_G_PATH)
         torch.save(discriminator, SAVE_MODEL_D_PATH)
         print('save model weights complete with loss : %.3f' %(train_loss))    
+
+
+def test(dataloader_test,opt):
+    os.makedirs("images_2",exist_ok=True)
+    SAVE_MODEL_G_DIR = "./runs/train/"
+    SAVE_MODEL_G_PATH = os.path.join(SAVE_MODEL_G_DIR,"g_net.pt")
+    SAVE_MODEL_D_PATH = os.path.join(SAVE_MODEL_G_DIR,"d_net.pt")
+    #generator.load_state_dict(torch.load(SAVE_MODEL_G_PATH))
+    #discriminator.load_state_dict(torch.load(SAVE_MODEL_D_PATH))
+    
+    generator = torch.load(SAVE_MODEL_G_PATH)
+    discriminator = torch.load(SAVE_MODEL_D_PATH)
+    
+    #for epoch in range(opt.n_epochs):
+    train_loss = 0
+    with torch.no_grad():
+        for i, (imgs, _) in enumerate(dataloader_test):
+            # Adversarial ground truths
+            imgs = Variable(imgs.type(Tensor))
+            valid = Variable(Tensor(imgs.shape[0], 1).fill_(1.0), requires_grad=False)
+            fake = Variable(Tensor(imgs.shape[0], 1).fill_(0.0), requires_grad=False)
+            # -----------------
+            #  Inference Generator
+            # -----------------
+            # Sample noise as generator input
+            z = Variable(Tensor(np.random.normal(0, 1, (imgs.shape[0], opt.latent_dim))))
+            # Generate a batch of images
+            gen_imgs = generator(imgs)
+            # Loss measures generator's ability to fool the discriminator
+            g_loss = adversarial_loss(discriminator(gen_imgs), valid)
             
+            print(
+                "[Batch %d/%d] [G loss: %f]"
+                % (i, len(dataloader), g_loss.item())
+            )
+            batches_done = len(dataloader) + i
+            #if batches_done % opt.sample_interval_2 == 0:
+            save_image(gen_imgs.data[:1], "images_2/%d.png" % batches_done, nrow=1, normalize=True)
+
 
 if __name__=="__main__":
     opt = get_opt()
@@ -287,7 +325,10 @@ if __name__=="__main__":
             num_workers=opt.n_cpu,
         )
         #dataloader = load_data(opt)
-        #dataloader_test = load_data_test(opt)
+        dataloader_test = load_data_test(opt)
     TRAIN = opt.train
     if TRAIN:
         train(dataloader,opt)
+    TEST=opt.test
+    if TEST:
+        test(dataloader_test,opt)
