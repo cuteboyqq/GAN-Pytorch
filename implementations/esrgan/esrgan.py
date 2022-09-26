@@ -37,7 +37,7 @@ def get_opt():
     parser.add_argument("--img_size", type=int, default=256, help="size of each image dimension")
     parser.add_argument('-test','--test',type=bool,help='do test',default=False)
     parser.add_argument('-train','--train',type=bool,help='do train',default=True)
-    parser.add_argument('-loadweight','--load-weight',type=bool,help='load weight or not',default=False)
+    parser.add_argument('-loadweight','--load-weight',type=bool,help='load weight or not',default=True)
     parser.add_argument('-imgdir','--img-dir',help='train image dir',default=r"/home/ali/GitHub_Code/YOLO/YOLOV5/runs/detect/f_384_2min/normal")
     parser.add_argument("--epoch", type=int, default=0, help="epoch to start training from")
     parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
@@ -54,7 +54,7 @@ def get_opt():
     parser.add_argument("--sample_interval", type=int, default=100, help="interval between saving image samples")
     parser.add_argument("--checkpoint_interval", type=int, default=5000, help="batch interval between model checkpoints")
     parser.add_argument("--residual_blocks", type=int, default=23, help="number of residual blocks in the generator")
-    parser.add_argument("--warmup_batches", type=int, default=200, help="number of batches with pixel-wise loss only")
+    parser.add_argument("--warmup_batches", type=int, default=100, help="number of batches with pixel-wise loss only")
     parser.add_argument("--lambda_adv", type=float, default=5e-3, help="adversarial loss weight")
     parser.add_argument("--lambda_pixel", type=float, default=1e-2, help="pixel-wise loss weight")
     opt = parser.parse_args()
@@ -187,13 +187,13 @@ def train(data_loader,opt):
             loss_GAN = criterion_GAN(pred_fake - pred_real.mean(0, keepdim=True), valid)
     
             # Content loss
-            gen_features = feature_extractor(gen_hr)
-            real_features = feature_extractor(imgs_hr).detach()
-            loss_content = criterion_content(gen_features, real_features)
+            #gen_features = feature_extractor(gen_hr)
+            #real_features = feature_extractor(imgs_hr).detach()
+            #loss_content = criterion_content(gen_features, real_features)
     
             # Total generator loss
-            loss_G = loss_content + opt.lambda_adv * loss_GAN + opt.lambda_pixel * loss_pixel
-            #loss_G = opt.lambda_adv * loss_GAN + opt.lambda_pixel * loss_pixel
+            #loss_G = loss_content + opt.lambda_adv * loss_GAN + opt.lambda_pixel * loss_pixel
+            loss_G = opt.lambda_adv * loss_GAN + opt.lambda_pixel * loss_pixel
             loss_G.backward()
             optimizer_G.step()
     
@@ -221,8 +221,8 @@ def train(data_loader,opt):
             # --------------
     
             print(
-                "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f, content: %f, adv: %f, pixel: %f]"
-                #"[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f, adv: %f, pixel: %f]"
+                #"[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f, content: %f, adv: %f, pixel: %f]"
+                "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f, adv: %f, pixel: %f]"
                 % (
                     epoch,
                     opt.n_epochs,
@@ -230,7 +230,7 @@ def train(data_loader,opt):
                     len(dataloader),
                     loss_D.item(),
                     loss_G.item(),
-                    loss_content.item(),
+                    #loss_content.item(),
                     loss_GAN.item(),
                     loss_pixel.item(),
                 )
