@@ -39,7 +39,7 @@ class ImageDataset(Dataset):
             ]
         )
 
-        self.files = sorted(glob.glob(root + "/*.*"))
+        self.files = sorted(glob.glob(root + "/*/*.*"))
 
     def __getitem__(self, index):
         img = Image.open(self.files[index % len(self.files)])

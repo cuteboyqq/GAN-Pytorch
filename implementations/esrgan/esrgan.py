@@ -38,7 +38,7 @@ def get_opt():
     parser.add_argument('-test','--test',type=bool,help='do test',default=False)
     parser.add_argument('-train','--train',type=bool,help='do train',default=True)
     parser.add_argument('-loadweight','--load-weight',type=bool,help='load weight or not',default=False)
-    parser.add_argument('-imgdir','--img-dir',help='train image dir',default=r"C:\factory_data\2022-08-26\f_384_2min\crops_ori\line")
+    parser.add_argument('-imgdir','--img-dir',help='train image dir',default=r"/home/ali/GitHub_Code/YOLO/YOLOV5/runs/detect/f_384_2min/normal")
     parser.add_argument("--epoch", type=int, default=0, help="epoch to start training from")
     parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
     parser.add_argument("--dataset_name", type=str, default="line", help="name of the dataset")
@@ -48,8 +48,8 @@ def get_opt():
     parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
     parser.add_argument("--decay_epoch", type=int, default=100, help="epoch from which to start lr decay")
     parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
-    parser.add_argument("--hr_height", type=int, default=256, help="high res. image height")
-    parser.add_argument("--hr_width", type=int, default=256, help="high res. image width")
+    parser.add_argument("--hr_height", type=int, default=160, help="high res. image height")
+    parser.add_argument("--hr_width", type=int, default=160, help="high res. image width")
     parser.add_argument("--channels", type=int, default=3, help="number of image channels")
     parser.add_argument("--sample_interval", type=int, default=100, help="interval between saving image samples")
     parser.add_argument("--checkpoint_interval", type=int, default=5000, help="batch interval between model checkpoints")
@@ -106,10 +106,10 @@ def train(data_loader,opt):
     # Initialize generator and discriminator
     generator = GeneratorRRDB(opt.channels, filters=64, num_res_blocks=opt.residual_blocks).to(device)
     discriminator = Discriminator(input_shape=(opt.channels, *hr_shape)).to(device)
-    #feature_extractor = FeatureExtractor().to(device)
+    feature_extractor = FeatureExtractor().to(device)
 
     # Set feature extractor to inference mode
-    #feature_extractor.eval()
+    feature_extractor.eval()
 
     # Losses
     criterion_GAN = torch.nn.BCEWithLogitsLoss().to(device)
@@ -187,13 +187,13 @@ def train(data_loader,opt):
             loss_GAN = criterion_GAN(pred_fake - pred_real.mean(0, keepdim=True), valid)
     
             # Content loss
-            #gen_features = feature_extractor(gen_hr)
-            #real_features = feature_extractor(imgs_hr).detach()
-            #loss_content = criterion_content(gen_features, real_features)
+            gen_features = feature_extractor(gen_hr)
+            real_features = feature_extractor(imgs_hr).detach()
+            loss_content = criterion_content(gen_features, real_features)
     
             # Total generator loss
-            #loss_G = loss_content + opt.lambda_adv * loss_GAN + opt.lambda_pixel * loss_pixel
-            loss_G = opt.lambda_adv * loss_GAN + opt.lambda_pixel * loss_pixel
+            loss_G = loss_content + opt.lambda_adv * loss_GAN + opt.lambda_pixel * loss_pixel
+            #loss_G = opt.lambda_adv * loss_GAN + opt.lambda_pixel * loss_pixel
             loss_G.backward()
             optimizer_G.step()
     
@@ -221,8 +221,8 @@ def train(data_loader,opt):
             # --------------
     
             print(
-                #"[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f, content: %f, adv: %f, pixel: %f]"
-                "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f, adv: %f, pixel: %f]"
+                "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f, content: %f, adv: %f, pixel: %f]"
+                #"[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f, adv: %f, pixel: %f]"
                 % (
                     epoch,
                     opt.n_epochs,
@@ -230,7 +230,7 @@ def train(data_loader,opt):
                     len(dataloader),
                     loss_D.item(),
                     loss_G.item(),
-                    #loss_content.item(),
+                    loss_content.item(),
                     loss_GAN.item(),
                     loss_pixel.item(),
                 )
