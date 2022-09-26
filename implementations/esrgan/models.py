@@ -4,7 +4,10 @@ import torch
 from torchvision.models import vgg19,vgg16,resnet18
 import math
 
-
+'''
+download pre-trained models
+https://pytorch.org/vision/0.8/models.html
+'''
 class FeatureExtractor(nn.Module):
     def __init__(self):
         super(FeatureExtractor, self).__init__()
