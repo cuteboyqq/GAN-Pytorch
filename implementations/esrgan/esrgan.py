@@ -39,6 +39,7 @@ def get_opt():
     parser.add_argument('-train','--train',type=bool,help='do train',default=False)
     parser.add_argument('-loadweight','--load-weight',type=bool,help='load weight or not',default=True)
     parser.add_argument('-imgdir','--img-dir',help='train image dir',default=r"/home/ali/GitHub_Code/YOLO/YOLOV5/runs/detect/f_384_2min/normal")
+    parser.add_argument('-imgdirtest','--img-dirtest',help='test image dir',default=r"/home/ali/GitHub_Code/cuteboyqq/GAN/PyTorch-GAN/implementations/dcgan/test_result/total")
     parser.add_argument("--epoch", type=int, default=0, help="epoch to start training from")
     parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
     parser.add_argument("--dataset_name", type=str, default="line", help="name of the dataset")
@@ -82,7 +83,7 @@ def load_data(args):
 
 def load_data_test(args):
     size = (args.img_size,args.img_size)
-    img_data = torchvision.datasets.ImageFolder(args.img_dir,
+    img_data = torchvision.datasets.ImageFolder(args.img_dirtest,
                                                 transform=transforms.Compose([
                                                 transforms.Resize(size),
                                                 #transforms.RandomHorizontalFlip(),
