@@ -18,12 +18,13 @@ os.makedirs("images", exist_ok=True)
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-test','--test',type=bool,help='do test',default=True)
-parser.add_argument('-train','--train',type=bool,help='do train',default=False)
+parser.add_argument('-test','--test',type=bool,help='do test',default=False)
+parser.add_argument('-train','--train',type=bool,help='do train',default=True)
 parser.add_argument('-loadweight','--load-weight',type=bool,help='load weight or not',default=True)
-parser.add_argument('-imgdir','--img-dir',help='train image dir',default=r"/home/ali/YOLOV5/runs/detect/f_384_2min/crops_ori")
+parser.add_argument('-imgdir','--img-dir',help='train image dir',default=r"C:\factory_data\2022-08-26\f_384_2min\crops_ori")
+parser.add_argument("--start_epochs", type=int, default=44, help="number of epochs of training")
 parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
-parser.add_argument("--batch_size", type=int, default=64, help="size of the batches")
+parser.add_argument("--batch_size", type=int, default=36, help="size of the batches")
 parser.add_argument("--test_batch_size", type=int, default=1, help="size of the batches")
 parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
 parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
@@ -32,7 +33,7 @@ parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads 
 parser.add_argument("--latent_dim", type=int, default=400, help="dimensionality of the latent space")
 parser.add_argument("--img_size", type=int, default=128, help="size of each image dimension")
 parser.add_argument("--channels", type=int, default=3, help="number of image channels")
-parser.add_argument("--sample_interval", type=int, default=200, help="interval between image sampling")
+parser.add_argument("--sample_interval", type=int, default=100, help="interval between image sampling")
 parser.add_argument("--sample_interval_2", type=int, default=10, help="interval between image sampling")
 opt = parser.parse_args()
 print(opt)
@@ -204,7 +205,7 @@ if TRAIN:
             print('load weight G: {}'.format(SAVE_MODEL_G_PATH))
             print('load weight D: {}'.format(SAVE_MODEL_D_PATH))
     _lowest_loss = 10000
-    for epoch in range(opt.n_epochs):
+    for epoch in range(opt.start_epochs,opt.n_epochs):
         train_loss = 0
         for i, (imgs, _) in enumerate(dataloader):
     
@@ -254,7 +255,7 @@ if TRAIN:
     
             batches_done = epoch * len(dataloader) + i
             if batches_done % opt.sample_interval == 0:
-                save_image(gen_imgs.data[:36], "images/%d.png" % batches_done, nrow=6, normalize=True)
+                save_image(gen_imgs.data[:36], "images/%d.png" % batches_done, nrow=6, normalize=False)
            
             loss = d_loss + g_loss
             train_loss += loss.item()*imgs.size(0)
@@ -302,9 +303,9 @@ if TEST:
             g_loss = adversarial_loss(discriminator(gen_imgs), valid)
             
             print(
-                "[Epoch %d/%d] [Batch %d/%d] [G loss: %f]"
-                % (epoch, opt.n_epochs, i, len(dataloader), g_loss.item())
+                "[Batch %d/%d] [G loss: %f]"
+                % (i, len(dataloader), g_loss.item())
             )
-            batches_done = epoch * len(dataloader) + i
+            batches_done = len(dataloader) + i
             #if batches_done % opt.sample_interval_2 == 0:
-            save_image(gen_imgs.data[:1], "images_2/%d.png" % batches_done, nrow=1, normalize=True)
+            save_image(gen_imgs.data[:1], "images_2/%d.png" % batches_done, nrow=1, normalize=False)
