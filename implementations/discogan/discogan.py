@@ -204,7 +204,8 @@ def train(opt):
 def infer(opt):
     os.makedirs("fake_B",exist_ok=True)
     os.makedirs("fake_A",exist_ok=True)
-    SAVE_MODEL_G_DIR = "./saved_model/edges2shoes/"
+    '''
+    SAVE_MODEL_G_DIR = "./saved_models/edges2shoes/"
     SAVE_MODEL_GAB_PATH = os.path.join(SAVE_MODEL_G_DIR,"G_AB_x.pt")
     SAVE_MODEL_GBA_PATH = os.path.join(SAVE_MODEL_G_DIR,"G_BA_x.pt")
     SAVE_MODEL_DA_PATH = os.path.join(SAVE_MODEL_G_DIR,"D_A_x.pt")
@@ -214,7 +215,7 @@ def infer(opt):
     G_BA = torch.load(SAVE_MODEL_GBA_PATH)
     D_A = torch.load(SAVE_MODEL_DA_PATH)
     D_B = torch.load(SAVE_MODEL_DB_PATH)
-    
+    '''
     for epoch in range(opt.epoch, opt.n_epochs):
         for i, batch in enumerate(infer_dataloader):
     
@@ -230,8 +231,8 @@ def infer(opt):
             #  Train Generators
             # ------------------
     
-            G_AB.val()
-            G_BA.val()
+            #G_AB.val()
+            #G_BA.val()
     
             #optimizer_G.zero_grad()
     
@@ -256,7 +257,8 @@ def infer(opt):
     
             #loss_G.backward()
             #optimizer_G.step()
-            
+            # Determine approximate time left
+            batches_done = epoch * len(dataloader) + i
             # If at sample interval save image
             if batches_done % opt.sample_interval == 0:
                 save_image(fake_B.data[:1], "fake_B/%d.png" % batches_done, nrow=1, normalize=True)
@@ -360,4 +362,7 @@ if __name__=="__main__":
         num_workers=opt.n_cpu,
     )
     
-    train(opt)
+    if opt.train:
+        train(opt)
+    if opt.test:
+        infer(opt)
