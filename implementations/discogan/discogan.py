@@ -23,19 +23,22 @@ import torch
 
 def get_opt():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epoch", type=int, default=0, help="epoch to start training from")
+    parser.add_argument('-test','--test',type=bool,help='do test',default=False)
+    parser.add_argument('-train','--train',type=bool,help='do train',default=True)
+    parser.add_argument('-loadweight','--load-weight',type=bool,help='load weight or not',default=True)
+    parser.add_argument("--epoch", type=int, default=9, help="epoch to start training from")
     parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
     parser.add_argument("--dataset_name", type=str, default="edges2shoes", help="name of the dataset")
-    parser.add_argument("--batch_size", type=int, default=64, help="size of the batches")
+    parser.add_argument("--batch_size", type=int, default=16, help="size of the batches")
     parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
     parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
     parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
     parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
-    parser.add_argument("--img_height", type=int, default=64, help="size of image height")
-    parser.add_argument("--img_width", type=int, default=64, help="size of image width")
+    parser.add_argument("--img_height", type=int, default=128, help="size of image height")
+    parser.add_argument("--img_width", type=int, default=128, help="size of image width")
     parser.add_argument("--channels", type=int, default=3, help="number of image channels")
     parser.add_argument("--sample_interval", type=int, default=100, help="interval between saving generator samples")
-    parser.add_argument("--checkpoint_interval", type=int, default=-1, help="interval between model checkpoints")
+    parser.add_argument("--checkpoint_interval", type=int, default=1, help="interval between model checkpoints")
     opt = parser.parse_args()
     print(opt)
     return opt
@@ -60,6 +63,24 @@ def sample_images(batches_done):
 #  Training
 # ----------
 def train(opt):
+    '''
+    SAVE_MODEL_G_DIR = "./saved_models/edges2shoes/"
+    if opt.load_weight:
+        if os.path.exists(SAVE_MODEL_G_PATH):  
+            SAVE_MODEL_GAB_PATH = os.path.join(SAVE_MODEL_G_DIR,"G_AB_9.pt")
+            SAVE_MODEL_GBA_PATH = os.path.join(SAVE_MODEL_G_DIR,"G_BA_9.pt")
+            SAVE_MODEL_DA_PATH = os.path.join(SAVE_MODEL_G_DIR,"D_A_9.pt")
+            SAVE_MODEL_DB_PATH = os.path.join(SAVE_MODEL_G_DIR,"D_B_9.pt")
+            
+            G_AB = torch.load(SAVE_MODEL_GAB_PATH)
+            G_BA = torch.load(SAVE_MODEL_GBA_PATH)
+            D_A = torch.load(SAVE_MODEL_DA_PATH)
+            D_B = torch.load(SAVE_MODEL_DB_PATH)
+            print('load weight G_AB: {}'.format(SAVE_MODEL_GAB_PATH))
+            print('load weight G_BA: {}'.format(SAVE_MODEL_GBA_PATH))
+            print('load weight D_A: {}'.format(SAVE_MODEL_DA_PATH))
+            print('load weight D_B: {}'.format(SAVE_MODEL_DB_PATH))
+    '''
     prev_time = time.time()
     for epoch in range(opt.epoch, opt.n_epochs):
         for i, batch in enumerate(dataloader):
@@ -169,10 +190,77 @@ def train(opt):
     
         if opt.checkpoint_interval != -1 and epoch % opt.checkpoint_interval == 0:
             # Save model checkpoints
+            '''
             torch.save(G_AB.state_dict(), "saved_models/%s/G_AB_%d.pth" % (opt.dataset_name, epoch))
             torch.save(G_BA.state_dict(), "saved_models/%s/G_BA_%d.pth" % (opt.dataset_name, epoch))
             torch.save(D_A.state_dict(), "saved_models/%s/D_A_%d.pth" % (opt.dataset_name, epoch))
             torch.save(D_B.state_dict(), "saved_models/%s/D_B_%d.pth" % (opt.dataset_name, epoch))
+            '''
+            torch.save(G_AB, "saved_models/%s/G_AB_%d.pt" % (opt.dataset_name, epoch))
+            torch.save(G_BA, "saved_models/%s/G_BA_%d.pt" % (opt.dataset_name, epoch))
+            torch.save(D_A, "saved_models/%s/D_A_%d.pt" % (opt.dataset_name, epoch))
+            torch.save(D_B, "saved_models/%s/D_B_%d.pt" % (opt.dataset_name, epoch))
+            
+def infer(opt):
+    os.makedirs("fake_B",exist_ok=True)
+    os.makedirs("fake_A",exist_ok=True)
+    SAVE_MODEL_G_DIR = "./saved_model/edges2shoes/"
+    SAVE_MODEL_GAB_PATH = os.path.join(SAVE_MODEL_G_DIR,"G_AB_x.pt")
+    SAVE_MODEL_GBA_PATH = os.path.join(SAVE_MODEL_G_DIR,"G_BA_x.pt")
+    SAVE_MODEL_DA_PATH = os.path.join(SAVE_MODEL_G_DIR,"D_A_x.pt")
+    SAVE_MODEL_DB_PATH = os.path.join(SAVE_MODEL_G_DIR,"D_B_x.pt")
+    
+    G_AB = torch.load(SAVE_MODEL_GAB_PATH)
+    G_BA = torch.load(SAVE_MODEL_GBA_PATH)
+    D_A = torch.load(SAVE_MODEL_DA_PATH)
+    D_B = torch.load(SAVE_MODEL_DB_PATH)
+    
+    for epoch in range(opt.epoch, opt.n_epochs):
+        for i, batch in enumerate(infer_dataloader):
+    
+            # Model inputs
+            real_A = Variable(batch["A"].type(Tensor))
+            real_B = Variable(batch["B"].type(Tensor))
+    
+            # Adversarial ground truths
+            valid = Variable(Tensor(np.ones((real_A.size(0), *D_A.output_shape))), requires_grad=False)
+            fake = Variable(Tensor(np.zeros((real_A.size(0), *D_A.output_shape))), requires_grad=False)
+    
+            # ------------------
+            #  Train Generators
+            # ------------------
+    
+            G_AB.val()
+            G_BA.val()
+    
+            #optimizer_G.zero_grad()
+    
+            # GAN loss
+            fake_B = G_AB(real_A)
+            loss_GAN_AB = adversarial_loss(D_B(fake_B), valid)
+            fake_A = G_BA(real_B)
+            loss_GAN_BA = adversarial_loss(D_A(fake_A), valid)
+    
+            loss_GAN = (loss_GAN_AB + loss_GAN_BA) / 2
+    
+            # Pixelwise translation loss
+            loss_pixelwise = (pixelwise_loss(fake_A, real_A) + pixelwise_loss(fake_B, real_B)) / 2
+    
+            # Cycle loss
+            loss_cycle_A = cycle_loss(G_BA(fake_B), real_A)
+            loss_cycle_B = cycle_loss(G_AB(fake_A), real_B)
+            loss_cycle = (loss_cycle_A + loss_cycle_B) / 2
+    
+            # Total loss
+            loss_G = loss_GAN + loss_cycle + loss_pixelwise
+    
+            #loss_G.backward()
+            #optimizer_G.step()
+            
+            # If at sample interval save image
+            if batches_done % opt.sample_interval == 0:
+                save_image(fake_B.data[:1], "fake_B/%d.png" % batches_done, nrow=1, normalize=True)
+                save_image(fake_A.data[:1], "fake_A/%d.png" % batches_done, nrow=1, normalize=True)
 
 if __name__=="__main__":
     
@@ -208,10 +296,21 @@ if __name__=="__main__":
 
     if opt.epoch != 0:
         # Load pretrained models
+        '''
         G_AB.load_state_dict(torch.load("saved_models/%s/G_AB_%d.pth" % (opt.dataset_name, opt.epoch)))
         G_BA.load_state_dict(torch.load("saved_models/%s/G_BA_%d.pth" % (opt.dataset_name, opt.epoch)))
         D_A.load_state_dict(torch.load("saved_models/%s/D_A_%d.pth" % (opt.dataset_name, opt.epoch)))
         D_B.load_state_dict(torch.load("saved_models/%s/D_B_%d.pth" % (opt.dataset_name, opt.epoch)))
+        '''
+        torch.load("saved_models/%s/G_AB_%d.pt" % (opt.dataset_name, opt.epoch))
+        torch.load("saved_models/%s/G_BA_%d.pt" % (opt.dataset_name, opt.epoch))
+        torch.load("saved_models/%s/D_A_%d.pt" % (opt.dataset_name, opt.epoch))
+        torch.load("saved_models/%s/D_B_%d.pt" % (opt.dataset_name, opt.epoch))
+        
+        print("load models %s/G_AB_%d.pt" % (opt.dataset_name, opt.epoch))
+        print("load models %s/G_BA_%d.pt" % (opt.dataset_name, opt.epoch))
+        print("load models %s/D_A_%d.pt" % (opt.dataset_name, opt.epoch))
+        print("load models %s/D_B_%d.pt" % (opt.dataset_name, opt.epoch))
     else:
         # Initialize weights
         G_AB.apply(weights_init_normal)
@@ -249,6 +348,15 @@ if __name__=="__main__":
                      r"C:\factory_data\2022-08-26\f_384_2min\crops\Green_line", transforms_=transforms_, mode="train"),
         batch_size=16,
         shuffle=True,
+        num_workers=opt.n_cpu,
+    )
+    
+    infer_dataloader = DataLoader(
+        #ImageDataset("../../data/%s" % opt.dataset_name, transforms_=transforms_, mode="val"),
+        ImageDataset(r"C:\factory_data\2022-08-26\f_384_2min\crops\gray_line",
+                     r"C:\factory_data\2022-08-26\f_384_2min\crops\Green_line", transforms_=transforms_, mode="train"),
+        batch_size=1,
+        shuffle=False,
         num_workers=opt.n_cpu,
     )
     

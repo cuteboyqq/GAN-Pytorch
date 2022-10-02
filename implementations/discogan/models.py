@@ -15,7 +15,7 @@ def weights_init_normal(m):
 ##############################
 #           U-NET
 ##############################
-
+#torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros', device=None, dtype=None)
 
 class UNetDown(nn.Module):
     def __init__(self, in_size, out_size, normalize=True, dropout=0.0):
@@ -64,7 +64,10 @@ class GeneratorUNet(nn.Module):
         self.up3 = UNetUp(1024, 256, dropout=0.5)
         self.up4 = UNetUp(512, 128)
         self.up5 = UNetUp(256, 64)
-
+        '''
+        padding (int, tuple) – the size of the padding. If is int, uses the same padding in all boundaries. If a 4-tuple, uses
+        (\text{padding\_left}padding_left, \text{padding\_right}padding_right, \text{padding\_top}padding_top, \text{padding\_bottom}padding_bottom)
+        '''
         self.final = nn.Sequential(
             nn.Upsample(scale_factor=2), nn.ZeroPad2d((1, 0, 1, 0)), nn.Conv2d(128, channels, 4, padding=1), nn.Tanh()
         )
