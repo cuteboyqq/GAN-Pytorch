@@ -23,10 +23,10 @@ import torch
 
 def get_opts():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epoch", type=int, default=0, help="epoch to start training from")
+    parser.add_argument("--epoch", type=int, default=5, help="epoch to start training from")
     parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
     parser.add_argument("--dataset_name", type=str, default="faketoreal", help="name of the dataset")
-    parser.add_argument('-imgdir','--img-dir',help='train image dir',default=r"C:\factory_data\2022-08-26\f_384_2min\crops_2cls_cyclegan")
+    parser.add_argument('-imgdir','--img-dir',help='train image dir',default=r"/home/ali/GitHub_Code/YOLO/YOLOV5/runs/detect/f_384_2min/crops_2cls_cyclegan")
     parser.add_argument("--batch_size", type=int, default=4, help="size of the batches")
     parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
     parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
@@ -58,10 +58,10 @@ def sample_images(batches_done):
     real_B = Variable(imgs["B"].type(Tensor))
     fake_A = G_BA(real_B)
     # Arange images along x-axis
-    real_A = make_grid(real_A, nrow=5, normalize=True)
-    real_B = make_grid(real_B, nrow=5, normalize=True)
-    fake_A = make_grid(fake_A, nrow=5, normalize=True)
-    fake_B = make_grid(fake_B, nrow=5, normalize=True)
+    real_A = make_grid(real_A, nrow=10, normalize=True)
+    real_B = make_grid(real_B, nrow=10, normalize=True)
+    fake_A = make_grid(fake_A, nrow=10, normalize=True)
+    fake_B = make_grid(fake_B, nrow=10, normalize=True)
     # Arange images along y-axis
     image_grid = torch.cat((real_A, fake_B, real_B, fake_A), 1)
     save_image(image_grid, "images/%s/%s.png" % (opt.dataset_name, batches_done), normalize=False)
@@ -236,6 +236,10 @@ if __name__=="__main__":
         G_BA.load_state_dict(torch.load("saved_models/%s/G_BA_%d.pth" % (opt.dataset_name, opt.epoch)))
         D_A.load_state_dict(torch.load("saved_models/%s/D_A_%d.pth" % (opt.dataset_name, opt.epoch)))
         D_B.load_state_dict(torch.load("saved_models/%s/D_B_%d.pth" % (opt.dataset_name, opt.epoch)))
+        print("load models/%s/G_AB_%d.pth" % (opt.dataset_name, opt.epoch))
+        print("load models/%s/G_BA_%d.pth" % (opt.dataset_name, opt.epoch))
+        print("load models/%s/D_A_%d.pth" % (opt.dataset_name, opt.epoch))
+        print("load models/%s/D_B_%d.pth" % (opt.dataset_name, opt.epoch))
     else:
         # Initialize weights
         G_AB.apply(weights_init_normal)
@@ -288,7 +292,7 @@ if __name__=="__main__":
         # Test data loader
         val_dataloader = DataLoader(
             ImageDataset("../../data/%s" % opt.dataset_name, transforms_=transforms_, unaligned=True, mode="test"),
-            batch_size=5,
+            batch_size=8,
             shuffle=True,
             num_workers=1,
         )
@@ -312,7 +316,7 @@ if __name__=="__main__":
         # Test data loader
         val_dataloader = DataLoader(
             ImageDataset(opt.img_dir, transforms_=transforms_, unaligned=True, mode="test"),
-            batch_size=5,
+            batch_size=10,
             shuffle=True,
             num_workers=1,
         )
