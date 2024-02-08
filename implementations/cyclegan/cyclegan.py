@@ -23,21 +23,21 @@ import torch
 
 def get_opts():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-test','--test',type=bool,help='do test',default=True)
-    parser.add_argument('-train','--train',type=bool,help='do train',default=False)
-    parser.add_argument("--epoch", type=int, default=9, help="epoch to start training from")
+    parser.add_argument('-test','--test',type=bool,help='do test',default=False)
+    parser.add_argument('-train','--train',type=bool,help='do train',default=True)
+    parser.add_argument("--epoch", type=int, default=0, help="epoch to start training from")
     parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
     parser.add_argument("--n_epochs_infer", type=int, default=2, help="number of epochs of training")
     parser.add_argument("--dataset_name", type=str, default="faketoreal", help="name of the dataset")
-    parser.add_argument('-imgdir','--img-dir',help='train image dir',default=r"/home/ali/GitHub_Code/YOLO/YOLOV5/runs/detect/f_384_2min/crops_2cls_cyclegan")
-    parser.add_argument("--batch_size", type=int, default=4, help="size of the batches")
+    parser.add_argument('-imgdir','--img-dir',help='train image dir',default=r"C:/Github_Code/GAN/GAN-Pytorch/implementations/cyclegan/datasets")
+    parser.add_argument("--batch_size", type=int, default=1, help="size of the batches")
     parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
     parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
     parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
     parser.add_argument("--decay_epoch", type=int, default=100, help="epoch from which to start lr decay")
     parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
-    parser.add_argument("--img_height", type=int, default=128, help="size of image height")
-    parser.add_argument("--img_width", type=int, default=128, help="size of image width")
+    parser.add_argument("--img_height", type=int, default=288, help="size of image height")
+    parser.add_argument("--img_width", type=int, default=512, help="size of image width")
     parser.add_argument("--channels", type=int, default=3, help="number of image channels")
     parser.add_argument("--sample_interval", type=int, default=100, help="interval between saving generator outputs")
     parser.add_argument("--checkpoint_interval", type=int, default=1, help="interval between saving model checkpoints")
@@ -360,7 +360,8 @@ if __name__=="__main__":
     elif custom_datasets:
         # Image transformations
         transforms_ = [
-            transforms.Resize(int(opt.img_height * 1.12), Image.BICUBIC),
+            # transforms.Resize(int(opt.img_height * 1.12), Image.BICUBIC),
+            transforms.Resize((int(opt.img_height * 1.12),int(opt.img_width * 1.12)), Image.BICUBIC),
             transforms.RandomCrop((opt.img_height, opt.img_width)),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
@@ -377,7 +378,7 @@ if __name__=="__main__":
         # Test data loader
         val_dataloader = DataLoader(
             ImageDataset(opt.img_dir, transforms_=transforms_, unaligned=True, mode="test"),
-            batch_size=10,
+            batch_size=1,
             shuffle=True,
             num_workers=1,
         )
