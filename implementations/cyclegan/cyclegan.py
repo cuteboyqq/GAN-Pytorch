@@ -23,12 +23,12 @@ import torch
 
 def get_opts():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-test','--test',type=bool,help='do test',default=False)
-    parser.add_argument('-train','--train',type=bool,help='do train',default=True)
-    parser.add_argument("--epoch", type=int, default=0, help="epoch to start training from")
+    parser.add_argument('-test','--test',type=bool,help='do test',default=True)
+    parser.add_argument('-train','--train',type=bool,help='do train',default=False)
+    parser.add_argument("--epoch", type=int, default=18, help="epoch to start training from")
     parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
     parser.add_argument("--n_epochs_infer", type=int, default=2, help="number of epochs of training")
-    parser.add_argument("--dataset_name", type=str, default="faketoreal", help="name of the dataset")
+    parser.add_argument("--dataset_name", type=str, default="fake_snow_scene", help="name of the dataset")
     parser.add_argument('-imgdir','--img-dir',help='train image dir',default=r"C:/Github_Code/GAN/GAN-Pytorch/implementations/cyclegan/datasets")
     parser.add_argument("--batch_size", type=int, default=1, help="size of the batches")
     parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
@@ -36,8 +36,8 @@ def get_opts():
     parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
     parser.add_argument("--decay_epoch", type=int, default=100, help="epoch from which to start lr decay")
     parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
-    parser.add_argument("--img_height", type=int, default=288, help="size of image height")
-    parser.add_argument("--img_width", type=int, default=512, help="size of image width")
+    parser.add_argument("--img_height", type=int, default=540, help="size of image height")
+    parser.add_argument("--img_width", type=int, default=1080, help="size of image width")
     parser.add_argument("--channels", type=int, default=3, help="number of image channels")
     parser.add_argument("--sample_interval", type=int, default=100, help="interval between saving generator outputs")
     parser.add_argument("--checkpoint_interval", type=int, default=1, help="interval between saving model checkpoints")
@@ -71,61 +71,21 @@ def sample_images(batches_done):
 
 def infer(opt):
     os.makedirs("fake_A", exist_ok=True)
-    os.makedirs("fake_B", exist_ok=True)
+    # os.makedirs("fake_B", exist_ok=True)
     #for epoch in range(opt.n_epochs_infer):
     for i, batch in enumerate(infer_dataloader):
-
-        # Set model input
         real_A = Variable(batch["A"].type(Tensor))
-        real_B = Variable(batch["B"].type(Tensor))
-
-        # Adversarial ground truths
-        valid = Variable(Tensor(np.ones((real_A.size(0), *D_A.output_shape))), requires_grad=False)
-        fake = Variable(Tensor(np.zeros((real_A.size(0), *D_A.output_shape))), requires_grad=False)
-
-        # ------------------
-        #  Train Generators
-        # ------------------
-
-        G_AB.train()
-        G_BA.train()
-
-        optimizer_G.zero_grad()
-
-        # Identity loss
-        loss_id_A = criterion_identity(G_BA(real_A), real_A)
-        loss_id_B = criterion_identity(G_AB(real_B), real_B)
-
-        loss_identity = (loss_id_A + loss_id_B) / 2
-
-        # GAN loss
+        # real_B = Variable(batch["B"].type(Tensor))
         fake_B = G_AB(real_A)
-        loss_GAN_AB = criterion_GAN(D_B(fake_B), valid)
-        fake_A = G_BA(real_B)
-        loss_GAN_BA = criterion_GAN(D_A(fake_A), valid)
-
-        loss_GAN = (loss_GAN_AB + loss_GAN_BA) / 2
-
-        # Cycle loss
-        recov_A = G_BA(fake_B)
-        loss_cycle_A = criterion_cycle(recov_A, real_A)
-        recov_B = G_AB(fake_A)
-        loss_cycle_B = criterion_cycle(recov_B, real_B)
-
-        loss_cycle = (loss_cycle_A + loss_cycle_B) / 2
-
-        # Total loss
-        loss_G = loss_GAN + opt.lambda_cyc * loss_cycle + opt.lambda_id * loss_identity
-        
-        #batches_done = len(infer_dataloader) + i
+        # fake_A = G_BA(real_B)
+        # recov_A = G_BA(fake_B)    
+        # recov_B = G_AB(fake_A)    
         batches_done =  i
-        #if batches_done % opt.sample_interval_2 == 0:
-        print(
-            "[Batch %d/%d] [G loss: %f]"
-            % (i, len(dataloader), loss_G.item())
-        )
-        save_image(fake_A.data[:1], "fake_A/%d.png" % batches_done, nrow=1, normalize=True)
+        # save_image(fake_A.data[:1], "fake_A/%d.png" % batches_done, nrow=1, normalize=True)
         save_image(fake_B.data[:1], "fake_B/%d.png" % batches_done, nrow=1, normalize=True)
+        # save_image(recov_A.data[:1], "fake_A/%d.png" % batches_done, nrow=1, normalize=True)
+        # save_image(recov_B.data[:1], "fake_B/%d.png" % batches_done, nrow=1, normalize=True)
+        sys.stdout.write("\rSave fake img %s.png"% (batches_done))
 
 
 # ----------
@@ -367,6 +327,13 @@ if __name__=="__main__":
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         ]
+
+        transforms_pred_ = [
+            # transforms.Resize(int(opt.img_height * 1.12), Image.BICUBIC),
+            transforms.RandomCrop((opt.img_height, opt.img_width)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ]
         
         # Training data loader
         dataloader = DataLoader(
@@ -384,10 +351,10 @@ if __name__=="__main__":
         )
         
         infer_dataloader = DataLoader(
-            ImageDataset(opt.img_dir, transforms_=transforms_, unaligned=True, mode="test"),
+            ImageDataset_infer(opt.img_dir, transforms_=transforms_pred_, unaligned=True, mode="pred"),
             batch_size=1,
             shuffle=False,
-            num_workers=1,
+            num_workers=8,
         )
     if opt.train:    
         train(opt)

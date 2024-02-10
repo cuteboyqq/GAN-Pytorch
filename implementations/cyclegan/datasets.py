@@ -22,8 +22,8 @@ class ImageDataset(Dataset):
         #self.files_B = sorted(glob.glob(os.path.join(root, "%s/B" % mode) + "/*.*"))
         
         self.files_A = sorted(glob.glob(os.path.join(root, "A") + "/*.*"))
-        self.files_B = sorted(glob.glob(os.path.join(root, "B") + "/*.*"))
-
+        self.files_B = sorted(glob.glob(os.path.join(root, "B","**") + "/*.*"))
+        # print(f"len(self.files_B) = {len(self.files_B)}")
     def __getitem__(self, index):
         image_A = Image.open(self.files_A[index % len(self.files_A)])
 
@@ -44,3 +44,25 @@ class ImageDataset(Dataset):
 
     def __len__(self):
         return max(len(self.files_A), len(self.files_B))
+
+
+
+class ImageDataset_infer(Dataset):
+    def __init__(self, root, transforms_=None, unaligned=False, mode="infer"):
+        self.transform = transforms.Compose(transforms_)
+        self.unaligned = unaligned
+        #self.files_A = sorted(glob.glob(os.path.join(root, "%s/A" % mode) + "/*.*"))
+        self.files_A = sorted(glob.glob(os.path.join(root, "A") + "/*.*"))
+      
+        # print(f"len(self.files_B) = {len(self.files_B)}")
+    def __getitem__(self, index):
+        image_A = Image.open(self.files_A[index % len(self.files_A)])
+        # Convert grayscale images to rgb
+        if image_A.mode != "RGB":
+            image_A = to_rgb(image_A)
+
+        item_A = self.transform(image_A) 
+        return {"A": item_A}
+
+    def __len__(self):
+        return len(self.files_A)
