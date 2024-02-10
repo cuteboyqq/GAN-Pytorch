@@ -53,7 +53,7 @@ def get_opt():
     parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
     parser.add_argument("--n_epochs_infer", type=int, default=2, help="number of epochs of training")
     parser.add_argument("--dataset_name", type=str, default="fake_snow_scene", help="name of the dataset")
-    parser.add_argument("--batch_size", type=int, default=4, help="size of the batches")
+    parser.add_argument("--batch_size", type=int, default=3, help="size of the batches")
     parser.add_argument("--valbatch_size", type=int, default=4, help="size of the batches")
     parser.add_argument('--LRgen', type=float, default=1e-4, help='learning rate for gen')
     parser.add_argument('--LRdis', type=float, default=1e-4, help='learning rate for dis')
@@ -65,6 +65,8 @@ def get_opt():
     parser.add_argument("--channels", type=int, default=3, help="number of image channels")
     parser.add_argument("--sample_interval", type=int, default=100, help="interval between saving generator outputs")
     parser.add_argument("--checkpoint_interval", type=int, default=1, help="interval between saving model checkpoints")
+    parser.add_argument("--lambda_cyc", type=float, default=10.0, help="cycle loss weight")
+    parser.add_argument("--lambda_id", type=float, default=5.0, help="identity loss weight")
 
     opt = parser.parse_args()
     return opt
@@ -78,6 +80,7 @@ def train(opt):
     countLossCycleB = 0.0
     countDisLossA = 0.0
     countDisLossB = 0.0
+    criterion_identity = torch.nn.L1Loss()
     lrScheduler = torch.optim.lr_scheduler.MultiStepLR(optAttn, milestones=[30], gamma=0.1, last_epoch=startEpoch -1)
     for epoch in range(startEpoch, nofEpoch):
 
@@ -100,6 +103,10 @@ def train(opt):
             realA = Variable(batch['A'].type(Tensor))
             realB = Variable(batch['B'].type(Tensor))
 
+            genA2B.train()
+            genB2A.train()
+            AttnA.train()
+            AttnB.train()
             # optgen zero
             # optattn zero 
             optG.zero_grad()
@@ -118,7 +125,7 @@ def train(opt):
             fgfakeB      = attnMapfakeB * fakeB
             bgfakeB      = (1 - attnMapfakeB) * fakeB
             genA_        = Variable((genB2A(fgfakeB)).type(Tensor))
-            A_           = Variable(((attnMapfakeB * genA_) + bgfakeB).type(Tensor))
+            A_    = Variable(((attnMapfakeB * genA_) + bgfakeB).type(Tensor))
             '''
             Train Generator B
             '''
@@ -135,7 +142,16 @@ def train(opt):
             genB_ = Variable((genA2B(fgfakeA)).type(Tensor))
             B_ =    Variable(((attnMapfakeA * genB_) + bgfakeA).type(Tensor))
 
-            # Gen , Attn and cyclic loss
+
+
+            # Identity loss
+            loss_id_A = criterion_identity(genB2A(realA), realA)
+            loss_id_B = criterion_identity(genA2B(realB), realB)
+    
+            
+            '''
+            Calculate Generator loss
+            '''
             if passDisWhole:
                 AdvLossA = realTargetLoss(disA(fakeA)) + realTargetLoss(disA(A_))
                 AdvLossB = realTargetLoss(disB(fakeB)) + realTargetLoss(disB(B_))
@@ -145,13 +161,15 @@ def train(opt):
             
             LossCycleA = cycleLoss(realA, A_) 
             LossCycleB = cycleLoss(realB, B_) 
-            G_totalloss = AdvLossA + AdvLossB + LossCycleA + LossCycleB
+            
 
-            loss_cycle = LossCycleA + LossCycleB
-            loss_GAN = AdvLossA + AdvLossB
-            loss_G = G_totalloss
+            loss_cycle = (LossCycleA + LossCycleB) / 2.0
+            loss_GAN = (AdvLossA + AdvLossB)/2.0
+            loss_identity = (loss_id_A + loss_id_B) / 2
+            loss_G = (loss_cycle*opt.lambda_cyc) + (loss_GAN) + (loss_identity*opt.lambda_id)
 
-            G_totalloss.backward(retain_graph=True)
+            # G_totalloss = AdvLossA + AdvLossB + LossCycleA + LossCycleB
+            loss_G.backward(retain_graph=True)
             optG.step()
             optAttn.step()
             '''
@@ -166,8 +184,8 @@ def train(opt):
                 DisLossA = fakeTargetLoss(disA(genA)) + fakeTargetLoss(disA(genA_)) + 2*realTargetLoss(disA(realA))
                 DisLossB = fakeTargetLoss(disB(genB)) + fakeTargetLoss(disB(genB_)) + 2*realTargetLoss(disA(realB))
          
-            D_totalloss = DisLossA + DisLossB
-            D_totalloss.backward()
+            loss_D = DisLossA + DisLossB
+            loss_D.backward()
             optD.step()
             
             # update counter
@@ -187,16 +205,17 @@ def train(opt):
 
             # Print log
             sys.stdout.write(
-                "\r[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f, adv: %f, cycle: %f] ETA: %s"
+                "\r[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f, adv: %f, cycle: %f, identity: %f] ETA: %s"
                 % (
                     epoch,
                     opt.n_epochs,
                     i,
                     len(dataloader),
-                    D_totalloss.item(),
+                    loss_D.item(),
                     loss_G.item(),
                     loss_GAN.item(),
                     loss_cycle.item(),
+                    loss_identity.item(),
                     time_left,
                 )
             )
