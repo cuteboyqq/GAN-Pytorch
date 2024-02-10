@@ -35,8 +35,8 @@ class Gen(nn.Module):
     def __init__(self, input_nc=3, output_nc=3, n_resblocks=9, norm=False):
         super(Gen, self).__init__()
         
-        model = [   #　nn.ReflectionPad2d(3),
-            nn.Conv2d(input_nc, 32, 3, 1, 1), # nn.Conv2d(input_nc, 32, 7)
+        model = [  nn.ReflectionPad2d(3),
+            nn.Conv2d(input_nc, 32, 7), # nn.Conv2d(input_nc, 32, 7)
             nn.ReLU(inplace=True) ]
 
         # Downsampling
@@ -61,9 +61,9 @@ class Gen(nn.Module):
             out_features = in_features//2
 
         # Output layer
-        model += [  # nn.ReflectionPad2d(3),
-                    # nn.Conv2d(32, output_nc, 7),
-                    nn.Conv2d(32, output_nc, 3, 1, 1),
+        model += [  nn.ReflectionPad2d(3),
+                    nn.Conv2d(32, output_nc, 7),
+                    # nn.Conv2d(32, output_nc, 3, 1, 1),
                     nn.Tanh() ]
 
         self.model = nn.Sequential(*model)
@@ -118,13 +118,13 @@ class Attn(nn.Module):
     def __init__(self, input_nc=3):
         super(Attn, self).__init__()
 
-        # model =  [  nn.Conv2d(3, 32, 7, stride=1, padding=3),
-        #             nn.InstanceNorm2d(32),
-        #             nn.ReLU(inplace=True) ]
-
-        model = [   nn.Conv2d(3, 32, 3, stride=1, padding=1),
-                    nn.InstanceNorm2d(64),
+        model =  [  nn.Conv2d(3, 32, 7, stride=1, padding=3),
+                    nn.InstanceNorm2d(32),
                     nn.ReLU(inplace=True) ]
+
+        # model = [   nn.Conv2d(3, 32, 3, stride=1, padding=1),
+        #             nn.InstanceNorm2d(64),
+        #             nn.ReLU(inplace=True) ]
 
         model += [  nn.Conv2d(32, 64, 3, stride=2, padding=1),
                     nn.InstanceNorm2d(64),
@@ -144,11 +144,11 @@ class Attn(nn.Module):
                     nn.InstanceNorm2d(32),
                     nn.ReLU(inplace=True) ]
 
-        # model += [  nn.Conv2d(32, 1, 7, stride=1, padding=3),
-        #             nn.Sigmoid() ]
-
-        model += [  nn.Conv2d(32, 1, 3, stride=1, padding=1),
+        model += [  nn.Conv2d(32, 1, 7, stride=1, padding=3),
                     nn.Sigmoid() ]
+
+        # model += [  nn.Conv2d(32, 1, 3, stride=1, padding=1),
+        #             nn.Sigmoid() ]
 
         self.model = nn.Sequential(*model)
 

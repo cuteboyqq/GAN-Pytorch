@@ -24,9 +24,18 @@ def sample_images(batches_done):
     genA2B.eval()
     genB2A.eval()
     real_A = Variable(imgs["A"].type(Tensor))
-    fake_B = genA2B(real_A)
+    attnMap_A = toZeroThreshold(AttnA(real_A))
+    fgA   = attnMap_A * real_A
+    bgA   = (1 - attnMap_A) * real_A
+    genB  = Variable(genA2B(fgA).type(Tensor))
+    fake_B = Variable(((attnMap_A * genB) + bgA).type(Tensor))
+
     real_B = Variable(imgs["B"].type(Tensor))
-    fake_A = genB2A(real_B)
+    attnMap_B = toZeroThreshold(AttnB(real_B))
+    fgB = attnMap_B * real_B
+    bgB = (1 - attnMap_B) * real_B
+    gen_A = Variable((genB2A(fgB)).type(Tensor))
+    fake_A = Variable(((attnMap_B * gen_A) + bgB).type(Tensor))
     # Arange images along x-axis
     real_A = make_grid(real_A, nrow=10, normalize=True)
     real_B = make_grid(real_B, nrow=10, normalize=True)
@@ -45,7 +54,7 @@ def get_opt():
     parser.add_argument("--n_epochs_infer", type=int, default=2, help="number of epochs of training")
     parser.add_argument("--dataset_name", type=str, default="fake_snow_scene", help="name of the dataset")
     parser.add_argument("--batch_size", type=int, default=4, help="size of the batches")
-    parser.add_argument("--valbatch_size", type=int, default=6, help="size of the batches")
+    parser.add_argument("--valbatch_size", type=int, default=4, help="size of the batches")
     parser.add_argument('--LRgen', type=float, default=1e-4, help='learning rate for gen')
     parser.add_argument('--LRdis', type=float, default=1e-4, help='learning rate for dis')
     parser.add_argument('--LRattn', type=float, default=1e-5, help='learning rate fir attention module')
@@ -156,15 +165,9 @@ def train(opt):
             else:
                 DisLossA = fakeTargetLoss(disA(genA)) + fakeTargetLoss(disA(genA_)) + 2*realTargetLoss(disA(realA))
                 DisLossB = fakeTargetLoss(disB(genB)) + fakeTargetLoss(disB(genB_)) + 2*realTargetLoss(disA(realB))
-            # if passDisWhole:
-            #     DisLossA = fakeTargetLoss(disA(fakeA)) 
-            #     DisLossB = fakeTargetLoss(disB(fakeB)) 
-            # else:
-            #     DisLossA = fakeTargetLoss(disA(genA)) 
-            #     DisLossB = fakeTargetLoss(disB(genB))
-
+         
             D_totalloss = DisLossA + DisLossB
-            D_totalloss.backward(retain_graph=True)
+            D_totalloss.backward()
             optD.step()
             
             # update counter
