@@ -43,7 +43,7 @@ def sample_images(batches_done):
     fake_B = make_grid(fake_B, nrow=10, normalize=True)
     # Arange images along y-axis
     image_grid = torch.cat((real_A, fake_B, real_B, fake_A), 1)
-    save_image(image_grid, "images/%s/%s.png" % (opt.dataset_name, batches_done),nrow=6,normalize=False)
+    save_image(image_grid, "images/%s/%s.png" % (opt.dataset_name, batches_done),nrow=3,normalize=False)
 
 
 def get_opt():
@@ -54,7 +54,7 @@ def get_opt():
     parser.add_argument("--n_epochs_infer", type=int, default=2, help="number of epochs of training")
     parser.add_argument("--dataset_name", type=str, default="fake_snow_scene", help="name of the dataset")
     parser.add_argument("--batch_size", type=int, default=3, help="size of the batches")
-    parser.add_argument("--valbatch_size", type=int, default=4, help="size of the batches")
+    parser.add_argument("--valbatch_size", type=int, default=3, help="size of the batches")
     parser.add_argument('--LRgen', type=float, default=1e-4, help='learning rate for gen')
     parser.add_argument('--LRdis', type=float, default=1e-4, help='learning rate for dis')
     parser.add_argument('--LRattn', type=float, default=1e-5, help='learning rate fir attention module')
@@ -107,6 +107,8 @@ def train(opt):
             genB2A.train()
             AttnA.train()
             AttnB.train()
+            disA.train()
+            disB.train()
             # optgen zero
             # optattn zero 
             optG.zero_grad()
@@ -179,10 +181,10 @@ def train(opt):
             optD.zero_grad()
             if passDisWhole:
                 DisLossA = fakeTargetLoss(disA(fakeA)) + fakeTargetLoss(disA(A_)) + 2*realTargetLoss(disA(realA))
-                DisLossB = fakeTargetLoss(disB(fakeB)) + fakeTargetLoss(disB(B_)) + 2*realTargetLoss(disA(realB))
+                DisLossB = fakeTargetLoss(disB(fakeB)) + fakeTargetLoss(disB(B_)) + 2*realTargetLoss(disB(realB))
             else:
                 DisLossA = fakeTargetLoss(disA(genA)) + fakeTargetLoss(disA(genA_)) + 2*realTargetLoss(disA(realA))
-                DisLossB = fakeTargetLoss(disB(genB)) + fakeTargetLoss(disB(genB_)) + 2*realTargetLoss(disA(realB))
+                DisLossB = fakeTargetLoss(disB(genB)) + fakeTargetLoss(disB(genB_)) + 2*realTargetLoss(disB(realB))
          
             loss_D = DisLossA + DisLossB
             loss_D.backward()
