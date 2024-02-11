@@ -11,10 +11,13 @@ import torchvision.transforms as transforms
 class ImageDataset(Dataset):
     def __init__(self, root, transforms_=None, mode="train"):
         self.transform = transforms.Compose(transforms_)
-
-        self.files = sorted(glob.glob(os.path.join(root, mode) + "/*.*"))
-        if mode == "train":
-            self.files.extend(sorted(glob.glob(os.path.join(root, "test") + "/*.*")))
+        print(root)
+        self.files = sorted(glob.glob(os.path.join(root, "A") + "\*.*"))
+        # self.files = sorted(root + "/*.*")
+        print(len(self.files))
+        # self.files = sorted(glob.glob(os.path.join(root, mode) + "/*.*"))
+        # if mode == "train":
+        #     self.files.extend(sorted(glob.glob(os.path.join(root, "test") + "/*.*")))
 
     def __getitem__(self, index):
 
