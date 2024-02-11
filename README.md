@@ -44,7 +44,7 @@ Collection of PyTorch implementations of Generative Adversarial Network varietie
     + [Wasserstein GAN DIV](#wasserstein-gan-div)
 
 ## Installation
-    $ git clone https://github.com/eriklindernoren/PyTorch-GAN
+    $ git clone https://github.com/cuteboyqq/GAN-Pytorch.git
     $ cd PyTorch-GAN/
     $ sudo pip3 install -r requirements.txt
 
